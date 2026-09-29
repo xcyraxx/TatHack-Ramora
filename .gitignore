@@ -4,4 +4,3 @@ ramora-server
 ramora-test
 *.snapshot
 *.snapshot.tmp
-CHANGELOG.md
