@@ -11,6 +11,9 @@ extern struct g_data gd;
 struct Conn {
     int fd;
     uint8_t want_close;
+    uint8_t authenticated;
+    uint32_t auth_failures;
+    uint64_t lockout_until;
     struct buf* rbuf;
     struct buf* wbuf;
 

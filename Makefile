@@ -42,7 +42,8 @@ SERVER_SRCS := \
 	$(SRC_DIR)/oper.c \
 	$(SRC_DIR)/response.c \
 	$(SRC_DIR)/timer.c \
-	$(SRC_DIR)/vtr.c
+	$(SRC_DIR)/vtr.c \
+	$(SRC_DIR)/persist.c
 
 CLIENT_SRCS := \
 	$(CLIENT_DIR)/client.c

@@ -12,7 +12,8 @@
 #define DEFAULT_HOST "127.0.0.1"
 #define DEFAULT_PORT 5000
 
-void handle_sigpipe(){
+void handle_sigpipe(int sig){
+    (void)sig;
     printf("[ERROR]: Server closed unexpecteadly\n");
     exit(EXIT_FAILURE);
 }
@@ -177,6 +178,11 @@ int main(int argc, char* argv[]) {
                 str[len] = '\0';
                 printf("STR: %s\n", str);
                 free(str);
+            }
+            else if (tag == TAG_ARR){
+                uint32_t arr_len;
+                read_full(fd, (char*)&arr_len, 4);
+                printf("ARR: len=%u\n", arr_len);
             }
             else {
                 printf("UNKNOWN\n");

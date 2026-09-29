@@ -23,6 +23,15 @@ extern int IDLE_TIMEOUT_MS;
 extern int READ_CHUNK;
 extern int MAX_EVENTS;
 
+extern char REQUIREPASS[256];
+extern int MAX_AUTH_FAILURES;
+extern int AUTH_LOCKOUT_MS;
+
+extern size_t MAXMEMORY;
+extern char MAXMEMORY_POLICY[64];
+
+extern char SNAPSHOT_PATH[1024];
+
 int load_config(const char *path);
 
 #endif

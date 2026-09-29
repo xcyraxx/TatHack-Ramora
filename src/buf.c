@@ -147,8 +147,14 @@ void bufcpylenoffset(struct buf* buffer, size_t offset, void* dest, size_t len){
 }
 
 int bufstrcmp(struct buf* buffer, const char* __str, size_t len){
-    if (bufsize(buffer) < len) return 1;
-    return memcmp(buffer->data, __str, len);
+    if (bufsize(buffer) == len + 1) {
+        if (bufstart(buffer)[len] != '\0') return 1;
+        return memcmp(bufstart(buffer), __str, len);
+    }
+    if (bufsize(buffer) == len) {
+        return memcmp(bufstart(buffer), __str, len);
+    }
+    return 1;
 }
 
 int bufcmp(struct buf* __buf1, struct buf* __buf2){

@@ -40,6 +40,7 @@ struct Entry {
     struct buf* val;
 
     size_t heap_idx;
+    uint64_t last_accessed;
 };
 
 int init_Entry(struct Entry* entry);

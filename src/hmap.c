@@ -18,6 +18,7 @@ int init_Entry(struct Entry* entry){
     }
 
     entry->heap_idx = (size_t)-1;
+    entry->last_accessed = 0;
     return 1;
 }
 

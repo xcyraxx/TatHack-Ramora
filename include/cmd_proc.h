@@ -16,8 +16,17 @@ extern size_t command_list_len;
 char* get_string(struct buf* buffer, size_t* offset);
 
 int handle_ping(struct Conn* conn, size_t offset);
+int handle_auth(struct Conn* conn, size_t offset);
 int handle_get(struct Conn* conn, size_t offset);
 int handle_set(struct Conn* conn, size_t offset);
+int handle_del(struct Conn* conn, size_t offset);
+int handle_exists(struct Conn* conn, size_t offset);
+int handle_incr(struct Conn* conn, size_t offset);
+int handle_decr(struct Conn* conn, size_t offset);
+int handle_save(struct Conn* conn, size_t offset);
+int handle_info(struct Conn* conn, size_t offset);
+int handle_keys(struct Conn* conn, size_t offset);
+int handle_scan(struct Conn* conn, size_t offset);
 int handle_get_ttl_sec(struct Conn* conn, size_t offset);
 int handle_get_ttl_ms(struct Conn* conn, size_t offset);
 int handle_set_ttl_sec(struct Conn* conn, size_t offset);

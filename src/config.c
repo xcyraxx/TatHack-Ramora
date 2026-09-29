@@ -24,6 +24,27 @@ int IDLE_TIMEOUT_MS = 10000;
 int READ_CHUNK = 8192;
 int MAX_EVENTS = 1024;
 
+char REQUIREPASS[256] = "";
+int MAX_AUTH_FAILURES = 5;
+int AUTH_LOCKOUT_MS = 10000;
+
+size_t MAXMEMORY = 0;
+char MAXMEMORY_POLICY[64] = "noeviction";
+
+char SNAPSHOT_PATH[1024] = "ramora.snapshot";
+
+static size_t parse_memory_size(const char* str) {
+    char* endptr = NULL;
+    double val = strtod(str, &endptr);
+    if (val <= 0) return 0;
+    if (endptr && *endptr) {
+        if (strcasecmp(endptr, "k") == 0 || strcasecmp(endptr, "kb") == 0) val *= 1024;
+        else if (strcasecmp(endptr, "m") == 0 || strcasecmp(endptr, "mb") == 0) val *= 1024 * 1024;
+        else if (strcasecmp(endptr, "g") == 0 || strcasecmp(endptr, "gb") == 0) val *= 1024 * 1024 * 1024;
+    }
+    return (size_t)val;
+}
+
 int load_config(const char *path) {
     FILE *fp = fopen(path, "r");
     if (!fp) {
@@ -32,17 +53,17 @@ int load_config(const char *path) {
     }
 
     char line[512];
-    char key[64], val[64];
+    char key[64], val[1024];
 
     while (fgets(line, sizeof(line), fp)) {
         if (line[0] == '#' || line[0] == '\n')
             continue;
 
-        if (sscanf(line, "%63s %63s", key, val) != 2)
+        if (sscanf(line, "%63s %1023s", key, val) != 2)
             continue;
         
         if (!strcmp(key, "bind")) {
-            snprintf(bind_addr, sizeof(bind_addr), "%s", val);
+            snprintf(bind_addr, sizeof(bind_addr), "%.63s", val);
         }
         else if (!strcmp(key, "port")) {
             int p = atoi(val);
@@ -53,7 +74,7 @@ int load_config(const char *path) {
         }
 
         else if (!strcmp(key, "logfile")) {
-            strncpy(logfile_path, val, sizeof(logfile_path) - 1);
+            snprintf(logfile_path, sizeof(logfile_path), "%.1023s", val);
         }
 
 
@@ -71,6 +92,13 @@ int load_config(const char *path) {
 
         else if (!strcmp(key, "read_chunk")) READ_CHUNK = atoi(val);
         else if (!strcmp(key, "max_events")) MAX_EVENTS = atoi(val);
+
+        else if (!strcmp(key, "requirepass")) snprintf(REQUIREPASS, sizeof(REQUIREPASS), "%.255s", val);
+        else if (!strcmp(key, "max_auth_failures")) MAX_AUTH_FAILURES = atoi(val);
+        else if (!strcmp(key, "auth_lockout_ms")) AUTH_LOCKOUT_MS = atoi(val);
+        else if (!strcmp(key, "maxmemory")) MAXMEMORY = parse_memory_size(val);
+        else if (!strcmp(key, "maxmemory_policy")) snprintf(MAXMEMORY_POLICY, sizeof(MAXMEMORY_POLICY), "%.63s", val);
+        else if (!strcmp(key, "snapshot_file")) snprintf(SNAPSHOT_PATH, sizeof(SNAPSHOT_PATH), "%.1023s", val);
     }
 
     fclose(fp);

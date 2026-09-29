@@ -17,12 +17,15 @@
 #include "cmd_proc.h"
 #include "dlist.h"
 #include "g_data.h"
+#include "config.h"
+#include "persist.h"
 
 #define container_of(ptr, T, member) \
     ((T *)( (char *)ptr - offsetof(T, member) ))
 
 size_t run = 1;
-void handle_sigint(){
+void handle_sigint(int sig){
+    (void)sig;
     run = 0;
 }
 
@@ -38,12 +41,28 @@ static void fd_to_nb(int fd){
 // -------------------------- Request Handling Function -----------------------------
 
 void handle_request(struct Conn* conn){
+    gd.stat_commands_processed++;
     size_t offset = 0;
     uint32_t nstr;
     bufcpylen(conn->rbuf, &nstr, HEADER_SIZE);
     offset += HEADER_SIZE;
 
     char* cmd = get_string(conn->rbuf, &offset);
+
+    // Authentication Guard
+    if (REQUIREPASS[0] != '\0' && conn->authenticated == 0){
+        if (strcmp(cmd, "AUTH") != 0){
+            free(cmd);
+            int rv = response_code(conn->wbuf, RES_ERR);
+            rv &= response_u32(conn->wbuf, 1);
+            rv &= response_str(conn->wbuf, "NOAUTH Authentication required");
+            if (rv == 0){
+                msg("handle_request (server.c): buffer size limit exceeded");
+                conn->want_close = 1;
+            }
+            return;
+        }
+    }
 
     int good_request = 0;
     for (size_t i=0; i<command_list_len; ++i){
@@ -54,6 +73,7 @@ void handle_request(struct Conn* conn){
                 msg("handle_request (server.c): buffer size limit exceeded");
                 conn->want_close = 1;
             }
+            break;
         }
     }
     free(cmd);
@@ -77,6 +97,11 @@ int try_one_request(struct Conn* conn){
     size_t offset = 0;
     uint32_t nstr = 0;
     bufcpylen(conn->rbuf, &nstr, HEADER_SIZE);
+    if (nstr > 64){
+        msg("try_one_request (server.c): Too many arguments");
+        conn->want_close = 1;
+        return 0;
+    }
     offset += HEADER_SIZE;
 
     for (uint32_t i = 0; i < nstr; ++i){
@@ -122,6 +147,7 @@ struct Conn* handle_accept(int fd){
     fd_to_nb(cfd);
 
     conn->fd = cfd;
+    gd.active_clients++;
     return conn;
 }
 
@@ -170,10 +196,9 @@ int handle_write(struct Conn* conn){
 
 int main(int argc, char* argv[]){
 
-    if (argc > 1) {
-        if (load_config(argv[1]) == 0){
-            printf("[NOTE] | Successfully opened config file\n");
-        }
+    const char* conf_path = (argc > 1) ? argv[1] : "conf/ramora.conf";
+    if (load_config(conf_path) == 0){
+        printf("[NOTE] | Successfully loaded config: %s\n", conf_path);
     }
 
     if (log_open(logfile_path) != 0) {
@@ -182,6 +207,7 @@ int main(int argc, char* argv[]){
 
     note("Starting Server - Welcome to Ramora");
     signal(SIGINT, handle_sigint);
+    signal(SIGTERM, handle_sigint);
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
@@ -255,6 +281,12 @@ int main(int argc, char* argv[]){
         return 0;
     }
 
+    int loaded_keys = load_snapshot(SNAPSHOT_PATH);
+    if (loaded_keys > 0) {
+        printf("[NOTE] | Restored %d keys from snapshot '%s'\n", loaded_keys, SNAPSHOT_PATH);
+        note("Restored keys from snapshot");
+    }
+
     while (run){
         int timeout_ms = smallest_remaining_time();
         int n_fd = epoll_wait(epfd, events, MAX_EVENTS, timeout_ms);
@@ -286,6 +318,7 @@ int main(int argc, char* argv[]){
                 free_conn(fd2conn.data[cfd]);
                 fd2conn.data[cfd] = NULL;
                 epoll_ctl(epfd, EPOLL_CTL_DEL, cfd, 0);
+                if (gd.active_clients > 0) gd.active_clients--;
             }
             else {
                 if (ev_flags & EPOLLIN){
@@ -323,6 +356,7 @@ int main(int argc, char* argv[]){
                     fd2conn.data[conn->fd] = NULL;
                     epoll_ctl(epfd, EPOLL_CTL_DEL, conn->fd, 0);
                     free_conn(conn);
+                    if (gd.active_clients > 0) gd.active_clients--;
                 }
             }
 
@@ -335,6 +369,9 @@ int main(int argc, char* argv[]){
             }
         }
     }
+
+    note("Saving snapshot before shutdown");
+    save_snapshot(SNAPSHOT_PATH);
 
     note("Freeing Hash Map");
     free_HMap(&gd.kv_db);
