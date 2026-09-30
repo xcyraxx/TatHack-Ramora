@@ -239,7 +239,6 @@ int scan_Entry(uint64_t cursor, const char* pattern, size_t count, struct buf* w
 
     size_t b = (size_t)cursor;
     size_t buckets_scanned = 0;
-    size_t min_buckets = count < 100 ? 512 : (count * 4);
 
     while (b < cap) {
         for (struct HNode* curr = gd.kv_db.new_tab->tab[b]; curr != NULL; curr = curr->next) {
@@ -281,7 +280,10 @@ int scan_Entry(uint64_t cursor, const char* pattern, size_t count, struct buf* w
         b++;
         buckets_scanned++;
 
-        if (matched_count >= count || buckets_scanned >= min_buckets) {
+        if (matched_count >= count) {
+            break;
+        }
+        if (buckets_scanned >= 131072) {
             break;
         }
     }
