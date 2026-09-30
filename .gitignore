@@ -4,3 +4,4 @@ ramora-server
 ramora-test
 *.snapshot
 *.snapshot.tmp
+VIDEO_SCRIPT.md
